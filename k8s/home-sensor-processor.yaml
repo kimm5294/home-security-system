@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-sensor-processor
+  namespace: home-security
+  labels:
+    app: home-sensor-processor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: home-sensor-processor
+  template:
+    metadata:
+      labels:
+        app: home-sensor-processor
+      annotations:
+          appmesh.k8s.aws/sidecarInjectorWebhook: disabled
+    spec:
+      serviceAccountName: home-sensor-service-account
+      containers:
+        - name: home-sensor-processor
+          image: 125969980889.dkr.ecr.us-east-1.amazonaws.com/home-sensor-processor:latest
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: SQS_EVENTS_URL
+              value: "https://sqs.us-east-1.amazonaws.com/125969980889/home-sensor-events-queue"
+            - name: SQS_ALERTS_URL
+              value: "https://sqs.us-east-1.amazonaws.com/125969980889/home-sensor-alerts-queue"
+            - name: DB_HOST
+              value: "home-sensor-db.c2fek2eia95a.us-east-1.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "postgres"
+            - name: DB_USER
+              value: "project_owner"
+            - name: DB_PASS
+              value: "firstproject"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-sensor-processor
+  namespace: home-security
+spec:
+  type: ClusterIP
+  selector:
+    app: home-sensor-processor
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

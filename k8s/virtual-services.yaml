@@ -1,0 +1,35 @@
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: home-sensor-listener
+  namespace: home-security
+spec:
+  awsName: home-sensor-listener.home-security.svc.cluster.local
+  provider:
+    virtualNode:
+      virtualNodeRef:
+        name: home-sensor-listener
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: home-sensor-processor
+  namespace: home-security
+spec:
+  awsName: home-sensor-processor.home-security.svc.cluster.local
+  provider:
+    virtualNode:
+      virtualNodeRef:
+        name: home-sensor-processor
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualService
+metadata:
+  name: home-sensor-alert-service
+  namespace: home-security
+spec:
+  awsName: home-sensor-alert-service.home-security.svc.cluster.local
+  provider:
+    virtualNode:
+      virtualNodeRef:
+        name: home-sensor-alert-service

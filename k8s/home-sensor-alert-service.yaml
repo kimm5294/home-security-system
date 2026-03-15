@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-sensor-alert-service
+  namespace: home-security
+  labels:
+    app: home-sensor-alert-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: home-sensor-alert-service
+  template:
+    metadata:
+      labels:
+        app: home-sensor-alert-service
+    spec:
+      serviceAccountName: home-sensor-service-account
+      containers:
+        - name: home-sensor-alert-service
+          image: 125969980889.dkr.ecr.us-east-1.amazonaws.com/home-sensor-alert-service:latest
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: SQS_ALERTS_URL
+              value: "https://sqs.us-east-1.amazonaws.com/125969980889/home-sensor-alerts-queue"
+            - name: SNS_ARN
+              value: "arn:aws:sns:us-east-1:125969980889:home-sensor-alerts"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-sensor-alert-service
+  namespace: home-security
+spec:
+  type: ClusterIP
+  selector:
+    app: home-sensor-alert-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

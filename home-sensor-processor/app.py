@@ -1,0 +1,84 @@
+from dotenv import load_dotenv
+import boto3
+import json
+import os
+import psycopg2
+import time
+
+load_dotenv()
+
+AWS_REGION = os.getenv("AWS_REGION")
+SQS_EVENTS_URL = os.getenv("SQS_EVENTS_URL")
+SQS_ALERTS_URL = os.getenv("SQS_ALERTS_URL")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = int(os.getenv("DB_PORT", 5432))
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
+
+if not AWS_REGION or not SQS_EVENTS_URL or not SQS_ALERTS_URL or not DB_HOST or not DB_NAME or not DB_USER or not DB_PASS:
+    raise ValueError("Missing required environment variables")
+
+sqs = boto3.client('sqs', region_name=AWS_REGION)
+
+conn = None
+for attempt in range(10):
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        print(f"Database connected on attempt {attempt + 1}")
+        break
+    except Exception as e:
+        print(f"Database connection attempt {attempt + 1} failed: {e}")
+        time.sleep(15)
+
+if conn is None:
+    raise Exception("Could not connect to database in 10 attempts")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS home_sensor_events (
+    id SERIAL PRIMARY KEY,
+    sensor_name VARCHAR(50),
+    event VARCHAR(50),
+    timestamp BIGINT
+)
+""")
+conn.commit()
+
+print("Processor started. Listening for messages...")
+
+while True:
+    try:
+        response = sqs.receive_message(
+            QueueUrl=SQS_EVENTS_URL,
+            MaxNumberOfMessages=10,
+            WaitTimeSeconds=10
+        )
+
+        messages = response.get('Messages', [])
+
+        for msg in messages:
+            data = json.loads(msg['Body'])
+            print("Received message. Beginning data processing for:", data)
+
+            cursor.execute(
+                "INSERT INTO home_sensor_events (sensor_name, event, timestamp) VALUES (%s, %s, %s)",
+                (data["sensor_name"], data["event"], data["timestamp"])
+            )
+            conn.commit()
+
+            sqs.delete_message(
+                QueueUrl=SQS_EVENTS_URL,
+                ReceiptHandle=msg['ReceiptHandle']
+            )
+
+            sqs.send_message(QueueUrl=SQS_ALERTS_URL, MessageBody=json.dumps(data))
+
+    except Exception as e:
+        print("Error occured. Exception:", e)

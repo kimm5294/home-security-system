@@ -1,0 +1,50 @@
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: home-sensor-listener
+  namespace: home-security
+spec:
+  podSelector:
+    matchLabels:
+      app: home-sensor-listener
+  listeners:
+    - portMapping:
+        port: 5000
+        protocol: http
+  serviceDiscovery:
+    dns:
+      hostname: home-sensor-listener.home-security.svc.cluster.local
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: home-sensor-processor
+  namespace: home-security
+spec:
+  podSelector:
+    matchLabels:
+      app: home-sensor-processor
+  listeners:
+    - portMapping:
+        port: 8080
+        protocol: http
+  serviceDiscovery:
+    dns:
+      hostname: home-sensor-processor.home-security.svc.cluster.local
+---
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: VirtualNode
+metadata:
+  name: home-sensor-alert-service
+  namespace: home-security
+spec:
+  podSelector:
+    matchLabels:
+      app: home-sensor-alert-service
+  listeners:
+    - portMapping:
+        port: 8080
+        protocol: http
+  serviceDiscovery:
+    dns:
+      hostname: home-sensor-alert-service.home-security.svc.cluster.local

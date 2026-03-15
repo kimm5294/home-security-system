@@ -1,0 +1,5 @@
+Flask==2.3.2
+boto3==1.28.26
+psycopg2-binary==2.9.10
+python-dotenv==1.0.0
+requests==2.32.0
